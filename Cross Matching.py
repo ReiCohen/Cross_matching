@@ -12,7 +12,7 @@ def sphere_distance_fast(RA_1, Dec_1, RA_2, Dec_2):
 CLU = np.radians(pd.read_csv('CLU.csv').loc[:, ['RA', 'DE']].to_numpy())
 trex = np.radians(pd.read_csv('trex.csv').loc[:, ['ra', 'dec']].to_numpy())
 
-tolerance = (np.linspace(0.0675, 0.07, 20))
+tolerance = (np.linspace(0.0675, 0.07, 22))
 result_vec = []
 
 for tol in tqdm(tolerance):
