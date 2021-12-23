@@ -101,7 +101,7 @@ plt.savefig(os.path.join(Results_Folder, '3D.png'), dpi=300)
 plt.figure(3)
 plt.plot(tolerance, result_vec, 'ro')
 plt.xlabel('tolerance @ rad')
-plt.ylabel('number of cross-match')
+plt.ylabel('number of cross-matches')
 plt.grid()
 plt.savefig(os.path.join(Results_Folder, 'MatchesVsTol.png'), dpi=300)
 
