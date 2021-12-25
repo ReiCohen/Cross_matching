@@ -35,7 +35,8 @@ plt.scatter(
     label='centroids'
 )
 print(np.degrees(km.cluster_centers_))
-plt.savefig(os.path.join(Results_Folder, 'kmeans.png'), dpi=300)
+plt.title('CLU with Kmeans' + "\n")
+plt.savefig(os.path.join(Results_Folder, 'CLU with Kmeans.png'), dpi=300)
 
 # save the csv file to upload to chandra
 header = ['ra', 'dec']
