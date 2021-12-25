@@ -17,7 +17,7 @@ y_km = km.fit_predict(CLU)
 
 # print the clusters
 for i in range(num_of_clusters_in_clu):
-    plt.scatter(CLU[y_km == i, 0] - 3.14, CLU[y_km == i, 1], label=str('cluster ' + str(i)))
+    plt.scatter(CLU[y_km == i, 0] - math.pi, CLU[y_km == i, 1], label=str('cluster ' + str(i)))
 plt.legend(scatterpoints=1)
 plt.grid()
 
@@ -33,7 +33,7 @@ plt.savefig('kmeans.png', dpi=300)
 
 # save the csv file to upload to chandra
 header = ['ra', 'dec']
-with open('Upload.csv', 'w', encoding='UTF8', newline='') as f:
+with open('Upload_to_chandra.csv', 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(np.degrees(km.cluster_centers_))
