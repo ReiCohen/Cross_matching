@@ -1,3 +1,4 @@
+from datetime import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,8 +6,13 @@ import os
 import csv
 from sklearn.cluster import KMeans
 import math
+import os
 
 num_of_clusters_in_clu = 7
+
+Results_Folder = os.path.join(os.getcwd(), 'CLU to chandra ' + str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')))
+os.mkdir(Results_Folder)
+
 
 plt.subplot(111, projection="aitoff")
 CLU = np.radians(pd.read_csv(os.path.join(os.getcwd(), 'data\\CLU.csv')).loc[:, ['RA', 'DE']].to_numpy())
@@ -29,11 +35,12 @@ plt.scatter(
     label='centroids'
 )
 print(np.degrees(km.cluster_centers_))
-plt.savefig('kmeans.png', dpi=300)
+plt.savefig(os.path.join(Results_Folder, 'kmeans.png'), dpi=300)
 
 # save the csv file to upload to chandra
 header = ['ra', 'dec']
-with open('Upload_to_chandra.csv', 'w', encoding='UTF8', newline='') as f:
+
+with open(os.path.join(Results_Folder, 'Upload_to_chandra.csv'), 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(np.degrees(km.cluster_centers_))
