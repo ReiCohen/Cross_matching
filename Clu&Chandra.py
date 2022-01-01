@@ -41,7 +41,12 @@ plt.savefig(os.path.join(Results_Folder, 'CLU with Kmeans.png'), dpi=300)
 # save the csv file to upload to chandra
 header = ['ra', 'dec']
 
-with open(os.path.join(Results_Folder, 'Upload_to_chandra.csv'), 'w', encoding='UTF8', newline='') as f:
+with open(os.path.join(Results_Folder, 'Upload_CLU_centers_to_chandra.csv'), 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(np.degrees(km.cluster_centers_))
+
+with open(os.path.join(Results_Folder, 'Upload_ALL_CLU_to_chandra.csv'), 'w', encoding='UTF8', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(header)
+    writer.writerows(np.degrees(CLU))
