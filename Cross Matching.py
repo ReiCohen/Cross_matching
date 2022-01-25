@@ -15,31 +15,40 @@ def sphere_distance_fast(RA_1, Dec_1, RA_2, Dec_2):
     return Dist
 
 
-# for fake run (search for matches between CLU and CLU+rand() with 9 lines)
-# CLU = np.radians(pd.read_csv(os.path.join(os.getcwd(), 'data\\FakeClu1.csv')).loc[:, ['RA', 'DE']].to_numpy())
-# trex = np.radians(pd.read_csv(os.path.join(os.getcwd(), 'data\\FakeClu2.csv')).loc[:, ['RA', 'DE']].to_numpy())
-# tolerance = (np.linspace(0, 0.002, 10))
+Catalog1 = 'data\\CLU.csv'
+Catalog2 = 'data\\Trex_LONG_near_CLU.csv'
+
+Catalog1_Name = Catalog1[5:-4]
+Catalog2_Name = Catalog2[5:-4]
+
+Catalog1_Parameters = ['RA', 'DE', 'Name']
+Catalog2_Parameters = ['ra', 'dec', 'ObsID']
 
 # Read the csv files
-CLU = np.radians(pd.read_csv(os.path.join(os.getcwd(), 'data\\CLU.csv')).loc[:, ['RA', 'DE']].to_numpy())
-trex = np.radians(pd.read_csv(os.path.join(os.getcwd(), 'data\\trex.csv')).loc[:, ['ra', 'dec']].to_numpy())
+Catalog1_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[0:2]].to_numpy())
+Catalog2_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[0:2]].to_numpy())
+
+Catalog1_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[2]]
+Catalog2_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[2]]
 
 # Define the angular tolerance
-tolerance = (np.linspace(0.065, 0.075, 20))
+tolerance = (np.linspace(0.000048481368, 0.000048481368, 1))
 
 # Define the angular tolerance for the plots
 Selected_Tol_toPlot = tolerance[-1]
 
 # Create Folders
-Results_Folder = os.path.join(os.getcwd(), str(datetime.now().strftime('%Y-%m-%d_%H-%M-%S')))
+Results_Folder = os.path.join(os.getcwd(), Catalog1_Name + ' && ' + Catalog2_Name + ' @ ' + str(
+    datetime.now().strftime('%Y-%m-%d_%H-%M-%S')))
 Folder_for_txt = os.path.join(Results_Folder, 'txt')
 os.mkdir(Results_Folder)
 os.mkdir(Folder_for_txt)
 
-
 result_vec = []
 plt.figure(2)
 plt.subplot(projection="aitoff")
+for i in range((len(Catalog1_Data))):
+    plt.scatter(Catalog1_Data[i][0] - math.pi, Catalog1_Data[i][1], facecolors='none', edgecolors='b', linewidth=0.1)
 plt.grid()
 
 data_for_legacysurvey = []
@@ -48,8 +57,9 @@ for tol in tqdm(tolerance):
     Matches_Text_Tol = open(os.path.join(Folder_for_txt, "Matches list for tol =  " + str(tol)[0:6] + '.txt'),
                             "w")
     count_match = 0
-    for x in range((len(CLU))):
-        distance_vec = sphere_distance_fast(CLU[x][0], CLU[x][1], trex[:, 0], trex[:, 1])
+    for x in range((len(Catalog1_Data))):
+        distance_vec = sphere_distance_fast(Catalog1_Data[x][0], Catalog1_Data[x][1], Catalog2_Data[:, 0],
+                                            Catalog2_Data[:, 1])
         Where_Vec = np.asarray(np.where(distance_vec < tol))[0]
 
         # add the number of matches with this tol
@@ -58,28 +68,33 @@ for tol in tqdm(tolerance):
         for m in Where_Vec:
             # save all the matches for each tolerance, in txt file
             Matches_Text_Tol.write(
-                "\n" + 'match between clu@' + str(x) + ' RA is ' + str(np.degrees(CLU[x][0]))[0:7] + ' DEC is ' + str(
-                    np.degrees(CLU[x][1]))[0:6] + ' and trex@' + str(m) + ' RA is ' + str(np.degrees(trex[m][0]))[0:7]
-                + ' DEC is ' + str(np.degrees(trex[m][1]))[0:6] + "\n")
+                "\n" + 'match between ' + Catalog1_Name + '@' + str(x) + ' RA is ' + str(
+                    np.degrees(Catalog1_Data[x][0]))[0:7] + ' DEC is ' + str(
+                    np.degrees(Catalog1_Data[x][1]))[0:6] + ' and ' + Catalog2_Name + '@' + str(m) + ' RA is ' + str(
+                    np.degrees(Catalog2_Data[m][0]))[0:7]
+                + ' DEC is ' + str(np.degrees(Catalog2_Data[m][1]))[0:6] + "\n")
             # save only the matches for tolerance = Selected_Tol_toPlot
             if tol == Selected_Tol_toPlot:
                 # plot simple scatter
                 plt.figure(1)
-                plt.scatter(np.degrees(CLU[x][0]), np.degrees(CLU[x][1]),  facecolors='none', edgecolors='b')
-                plt.scatter(np.degrees(trex[m][0]), np.degrees(trex[m][1]), facecolors='g', edgecolors='none')
+                plt.scatter(np.degrees(Catalog1_Data[x][0]), np.degrees(Catalog1_Data[x][1]), facecolors='none',
+                            edgecolors='b')
+                plt.scatter(np.degrees(Catalog2_Data[m][0]), np.degrees(Catalog2_Data[m][1]), facecolors='g',
+                            edgecolors='none')
 
                 # plot 3D scatter
                 plt.figure(2)
-                plt.scatter(CLU[x][0] - math.pi, CLU[x][1], facecolors='none', edgecolors='b')
-                plt.scatter(trex[m][0] - math.pi, trex[m][1], facecolors='g', edgecolors='none')
+                plt.scatter(Catalog2_Data[m][0] - math.pi, Catalog2_Data[m][1], facecolors='g', edgecolors='none', s=20)
 
                 # save the ,matches in the data_for_legacysurvey to use later as csv
                 data_for_legacysurvey.append(
-                    [str(np.degrees(CLU[x][0]))[0:7], str(np.degrees(CLU[x][1]))[0:6], 'clu@' + str(x), 'blue',
-                     '10'])
+                    [str(np.degrees(Catalog1_Data[x][0]))[0:10], str(np.degrees(Catalog1_Data[x][1]))[0:10],
+                     Catalog1_Name + '@' + str(x), 'blue',
+                     '10', Catalog1_Info[x]])
                 data_for_legacysurvey.append(
-                    [str(np.degrees(trex[m][0]))[0:7], str(np.degrees(trex[m][1]))[0:6], 'trex@' + str(m), 'green',
-                     '10'])
+                    [str(np.degrees(Catalog2_Data[m][0]))[0:10], str(np.degrees(Catalog2_Data[m][1]))[0:10],
+                     Catalog2_Name + '@' + str(m), 'green',
+                     '10', Catalog2_Info[x]])
 
     result_vec.append(count_match)
     Matches_Text_Tol.close()
@@ -89,12 +104,13 @@ plt.figure(1)
 plt.xlabel('RA')
 plt.ylabel('DEC')
 plt.grid()
-plt.title('matches for tol = ' + str(Selected_Tol_toPlot) + '.  Blue = CLU, Green = trex')
+plt.title('matches for tol = ' + str(Selected_Tol_toPlot) + '.  Blue = ' + Catalog1_Name + ', Green = ' + Catalog2_Name)
 plt.savefig(os.path.join(Results_Folder, 'Scatter.png'), dpi=300)
 
 # save the 3d scatter
 plt.figure(2)
-plt.title('matches for tol = ' + str(Selected_Tol_toPlot) + '.  Blue = CLU, Green = trex' + "\n")
+plt.title('matches for tol = ' + str(
+    Selected_Tol_toPlot) + '.  Blue = ' + Catalog1_Name + ', Green = ' + Catalog2_Name + "\n")
 plt.savefig(os.path.join(Results_Folder, '3D.png'), dpi=300)
 
 # save the MatchesVsTol plot
@@ -106,8 +122,9 @@ plt.grid()
 plt.savefig(os.path.join(Results_Folder, 'MatchesVsTol.png'), dpi=300)
 
 # save the csv file to upload to legacysurvey
-header = ['ra', 'dec', 'name', 'color', 'radius']
-with open(os.path.join(Results_Folder, 'Upload_to_legacy_survey.csv'), 'w', encoding='UTF8', newline='') as f:
+header = ['ra', 'dec', 'name', 'color', 'radius', 'info']
+with open(os.path.join(Results_Folder, Catalog1_Name + '_&&_' + Catalog2_Name + '_' + 'UPLOAD_to_legacy_survey.csv'),
+          'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(data_for_legacysurvey)
