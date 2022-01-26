@@ -16,20 +16,20 @@ def sphere_distance_fast(RA_1, Dec_1, RA_2, Dec_2):
 
 
 Catalog1 = 'data\\CLU.csv'
-Catalog2 = 'data\\Trex_LONG_near_CLU.csv'
+Catalog2 = 'data\\Trex_SHORT_near_CLU.csv'
 
 Catalog1_Name = Catalog1[5:-4]
 Catalog2_Name = Catalog2[5:-4]
 
 Catalog1_Parameters = ['RA', 'DE', 'Name']
-Catalog2_Parameters = ['ra', 'dec', 'ObsID']
+Catalog2_Parameters = ['ra', 'dec', 'ObsID', 't_i', 't_f', 'S/N']
 
 # Read the csv files
 Catalog1_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[0:2]].to_numpy())
 Catalog2_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[0:2]].to_numpy())
 
-Catalog1_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[2]]
-Catalog2_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[2]]
+Catalog1_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[2:]]
+Catalog2_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[2:]]
 
 # Define the angular tolerance
 tolerance = (np.linspace(0.000048481368, 0.000048481368, 1))
@@ -68,9 +68,9 @@ for tol in tqdm(tolerance):
         for m in Where_Vec:
             # save all the matches for each tolerance, in txt file
             Matches_Text_Tol.write(
-                "\n" + 'match between ' + Catalog1_Name + '@' + str(x) + ' RA is ' + str(
+                "\n" + 'match between ' + Catalog1_Name + '@' + str(x+2) + ' RA is ' + str(
                     np.degrees(Catalog1_Data[x][0]))[0:7] + ' DEC is ' + str(
-                    np.degrees(Catalog1_Data[x][1]))[0:6] + ' and ' + Catalog2_Name + '@' + str(m) + ' RA is ' + str(
+                    np.degrees(Catalog1_Data[x][1]))[0:6] + ' and ' + Catalog2_Name + '@' + str(m+2) + ' RA is ' + str(
                     np.degrees(Catalog2_Data[m][0]))[0:7]
                 + ' DEC is ' + str(np.degrees(Catalog2_Data[m][1]))[0:6] + "\n")
             # save only the matches for tolerance = Selected_Tol_toPlot
@@ -89,12 +89,12 @@ for tol in tqdm(tolerance):
                 # save the ,matches in the data_for_legacysurvey to use later as csv
                 data_for_legacysurvey.append(
                     [str(np.degrees(Catalog1_Data[x][0]))[0:10], str(np.degrees(Catalog1_Data[x][1]))[0:10],
-                     Catalog1_Name + '@' + str(x), 'blue',
-                     '10', Catalog1_Info[x]])
+                     Catalog1_Name + '@' + str(x+2), 'blue',
+                     '10', Catalog1_Info['Name'][x],'' , '', ''])
                 data_for_legacysurvey.append(
                     [str(np.degrees(Catalog2_Data[m][0]))[0:10], str(np.degrees(Catalog2_Data[m][1]))[0:10],
-                     Catalog2_Name + '@' + str(m), 'green',
-                     '10', Catalog2_Info[x]])
+                     Catalog2_Name + '@' + str(m+2), 'green',
+                     '10', Catalog2_Info['ObsID'][m], Catalog2_Info['t_i'][m], Catalog2_Info['t_f'][m], Catalog2_Info['S/N'][m]])
 
     result_vec.append(count_match)
     Matches_Text_Tol.close()
@@ -122,7 +122,7 @@ plt.grid()
 plt.savefig(os.path.join(Results_Folder, 'MatchesVsTol.png'), dpi=300)
 
 # save the csv file to upload to legacysurvey
-header = ['ra', 'dec', 'name', 'color', 'radius', 'info']
+header = ['ra', 'dec', 'name', 'color', 'radius', 'info', 't_i', 't_f', 'S/N']
 with open(os.path.join(Results_Folder, Catalog1_Name + '_&&_' + Catalog2_Name + '_' + 'UPLOAD_to_legacy_survey.csv'),
           'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
