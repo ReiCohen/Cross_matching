@@ -22,7 +22,8 @@ Catalog1_Name = Catalog1[5:-4]
 Catalog2_Name = Catalog2[5:-4]
 
 Catalog1_Parameters = ['RA', 'DE', 'Name']
-Catalog2_Parameters = ['ra', 'dec', 'ObsID', 't_i', 't_f', 'S/N', 'mean_d_optical_arcmin']
+Catalog2_Parameters = ['ra', 'dec', 'ObsID', 't_i', 't_f', 'S/N', 'mean_d_optical_arcmin', 'Chandra_counterpart',
+                       'photons_in_ap_info']
 
 # Read the csv files
 Catalog1_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[0:2]].to_numpy())
@@ -32,7 +33,8 @@ Catalog1_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1
 Catalog2_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[2:]]
 
 # Define the angular tolerance
-tolerance = (np.linspace(0.000048481368, 0.000048481368, 1))
+tolerance = 10 * (2 * math.pi / 1296000)
+tolerance = (np.linspace(tolerance, tolerance, 1))
 
 # Define the angular tolerance for the plots
 Selected_Tol_toPlot = tolerance[-1]
@@ -87,18 +89,19 @@ for tol in tqdm(tolerance):
                 plt.figure(2)
                 plt.scatter(Catalog2_Data[m][0] - math.pi, Catalog2_Data[m][1], facecolors='g', edgecolors='none', s=20)
 
-                distance_temp = sphere_distance_fast(Catalog1_Data[x][0], Catalog1_Data[x][1], Catalog2_Data[m, 0],
-                                     Catalog2_Data[m, 1])
+                distance_temp = sphere_distance_fast(Catalog1_Data[x][0], Catalog1_Data[x][1], Catalog2_Data[m][0],
+                                                     Catalog2_Data[m][1])
                 # save the ,matches in the data_for_legacysurvey to use later as csv
                 data_for_legacysurvey.append(
                     [str(np.degrees(Catalog1_Data[x][0]))[0:10], str(np.degrees(Catalog1_Data[x][1]))[0:10],
                      Catalog1_Name + '@' + str(x + 2), 'blue',
-                     '10', Catalog1_Info['Name'][x], '', '', '', '', ''])
+                     '10', Catalog1_Info['Name'][x], '', '', '', '', '', '', ''])
                 data_for_legacysurvey.append(
                     [str(np.degrees(Catalog2_Data[m][0]))[0:10], str(np.degrees(Catalog2_Data[m][1]))[0:10],
                      Catalog2_Name + '@' + str(m + 2), 'green',
                      '10', Catalog2_Info['ObsID'][m], Catalog2_Info['t_i'][m], Catalog2_Info['t_f'][m],
-                     Catalog2_Info['S/N'][m], Catalog2_Info['mean_d_optical_arcmin'][m], str(distance_temp)])
+                     Catalog2_Info['S/N'][m], Catalog2_Info['mean_d_optical_arcmin'][m], str(distance_temp),
+                     Catalog2_Info['Chandra_counterpart'][m], Catalog2_Info['photons_in_ap_info'][m]])
 
     result_vec.append(count_match)
     Matches_Text_Tol.close()
@@ -126,9 +129,47 @@ plt.grid()
 plt.savefig(os.path.join(Results_Folder, 'MatchesVsTol.png'), dpi=300)
 
 # save the csv file to upload to legacysurvey
-header = ['ra', 'dec', 'name', 'color', 'radius', 'info', 't_i', 't_f', 'S/N', 'mean_d_optical_arcmin', 'dis_to_counter_CLU']
+header = ['ra', 'dec', 'name', 'color', 'radius', 'info', 't_i', 't_f', 'S/N', 'mean_d_optical_arcmin',
+          'dis_to_counter_CLU', 'Chandra_counterpart', 'photons_in_ap_info']
 with open(os.path.join(Results_Folder, Catalog1_Name + '_&&_' + Catalog2_Name + '_' + 'UPLOAD_to_legacy_survey.csv'),
           'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(data_for_legacysurvey)
+
+Trex_Matches = pd.DataFrame(data_for_legacysurvey[1::2], columns=header)
+
+Trex_Matches_in = Trex_Matches[Trex_Matches['Chandra_counterpart'] != 0]
+Trex_Matches_out = Trex_Matches[Trex_Matches['Chandra_counterpart'] == 0]
+
+plt.figure(4)
+plt.scatter(Trex_Matches_in['t_i'].astype(float), Trex_Matches_in['S/N'].astype(float), marker='^')
+plt.scatter(Trex_Matches_out['t_i'].astype(float), Trex_Matches_out['S/N'].astype(float), marker='o')
+plt.grid()
+plt.xlabel('t_i')
+plt.ylabel('S/N')
+plt.title('^ IN, o OUT')
+plt.savefig(os.path.join(Results_Folder, '1.png'), dpi=300)
+
+plt.figure(5)
+plt.scatter(Trex_Matches_in['dis_to_counter_CLU'].astype(float), Trex_Matches_in['mean_d_optical_arcmin'].astype(float),
+            marker='^')
+plt.scatter(Trex_Matches_out['dis_to_counter_CLU'].astype(float),
+            Trex_Matches_out['mean_d_optical_arcmin'].astype(float),
+            marker='o')
+plt.grid()
+plt.xlabel('dis_to_counter_CLU')
+plt.ylabel('mean_d_optical_arcmin')
+plt.title('^ IN, o OUT')
+plt.savefig(os.path.join(Results_Folder, '2.png'), dpi=300)
+
+
+#Trex_light_I = Trex_Matches['photons_in_ap_info']
+#Trex_light_I = Trex_light_I.loc[[6]].to_numpy()
+#print(Trex_light_I)
+
+
+#df_LP=Trex_Matches.loc[[6]] # This can be done on any line in the file, this is just an example
+#print(df_LP)
+#arrival_times=df_LP['photons_in_ap_info'].to_numpy()[0][:,0]
+#print(arrival_times)
