@@ -23,14 +23,30 @@ Catalog2_Name = Catalog2[5:-4]
 
 Catalog1_Parameters = ['RA', 'DE', 'Name']
 Catalog2_Parameters = ['ra', 'dec', 'ObsID', 't_i', 't_f', 'S/N', 'mean_d_optical_arcmin', 'Chandra_counterpart',
-                       'photons_in_ap_info']
+                       'photons_in_ap_info', 'grating', 'nrows', 'buffer_pixels', 'chipx_avg', 'chipy_avg']
 
 # Read the csv files
-Catalog1_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[0:2]].to_numpy())
-Catalog2_Data = np.radians(pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[0:2]].to_numpy())
 
-Catalog1_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters[2:]]
-Catalog2_Info = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters[2:]]
+Catalog1_Data = pd.read_csv(os.path.join(os.getcwd(), Catalog1)).loc[:, Catalog1_Parameters]
+Catalog2_Data = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2_Parameters]
+
+# change degrees to rad
+Catalog1_Data['RA'] = np.radians(Catalog1_Data['RA'].to_numpy())
+Catalog1_Data['DE'] = np.radians(Catalog1_Data['DE'].to_numpy())
+Catalog2_Data['ra'] = np.radians(Catalog2_Data['ra'].to_numpy())
+Catalog2_Data['dec'] = np.radians(Catalog2_Data['dec'].to_numpy())
+
+pixel_size = 0.492
+
+cond_noHETGLETG = Catalog2_Data['grating'] == 'NONE'
+dfx = Catalog2_Data[cond_noHETGLETG]
+cond_nosubarrays = dfx['nrows'] > 1000
+cond_non_buffer = dfx['buffer_pixels'] == 0
+cond_no_border = (dfx['chipx_avg'] > 16 / pixel_size) & (dfx['chipx_avg'] < 1024 - 16 / pixel_size) & (
+            dfx['chipy_avg'] > 16 / pixel_size) & (dfx['chipy_avg'] < 1024 - 16 / pixel_size)
+Trex_cat = dfx[cond_nosubarrays & cond_no_border & cond_non_buffer]
+Catalog2_Data = Trex_cat.reset_index(drop=True)
+print(Catalog2_Data)
 
 # Define the angular tolerance
 tolerance = 10 * (2 * math.pi / 1296000)
@@ -50,7 +66,8 @@ result_vec = []
 plt.figure(2)
 plt.subplot(projection="aitoff")
 for i in range((len(Catalog1_Data))):
-    plt.scatter(Catalog1_Data[i][0] - math.pi, Catalog1_Data[i][1], facecolors='none', edgecolors='b', linewidth=0.1)
+    plt.scatter(Catalog1_Data.iloc[i, 0] - math.pi, Catalog1_Data.iloc[i, 1], facecolors='none', edgecolors='b',
+                linewidth=0.1)
 plt.grid()
 
 data_for_legacysurvey = []
@@ -60,8 +77,9 @@ for tol in tqdm(tolerance):
                             "w")
     count_match = 0
     for x in range((len(Catalog1_Data))):
-        distance_vec = sphere_distance_fast(Catalog1_Data[x][0], Catalog1_Data[x][1], Catalog2_Data[:, 0],
-                                            Catalog2_Data[:, 1])
+        distance_vec = sphere_distance_fast(Catalog1_Data.iloc[x, 0], Catalog1_Data.iloc[x, 1],
+                                            Catalog2_Data.iloc[:, 0],
+                                            Catalog2_Data.iloc[:, 1])
         Where_Vec = np.asarray(np.where(distance_vec < tol))[0]
 
         # add the number of matches with this tol
@@ -71,37 +89,40 @@ for tol in tqdm(tolerance):
             # save all the matches for each tolerance, in txt file
             Matches_Text_Tol.write(
                 "\n" + 'match between ' + Catalog1_Name + '@' + str(x + 2) + ' RA is ' + str(
-                    np.degrees(Catalog1_Data[x][0]))[0:7] + ' DEC is ' + str(
-                    np.degrees(Catalog1_Data[x][1]))[0:6] + ' and ' + Catalog2_Name + '@' + str(
+                    np.degrees(Catalog1_Data.iloc[x, 0]))[0:7] + ' DEC is ' + str(
+                    np.degrees(Catalog1_Data.iloc[x, 1]))[0:6] + ' and ' + Catalog2_Name + '@' + str(
                     m + 2) + ' RA is ' + str(
-                    np.degrees(Catalog2_Data[m][0]))[0:7]
-                + ' DEC is ' + str(np.degrees(Catalog2_Data[m][1]))[0:6] + "\n")
+                    np.degrees(Catalog2_Data.iloc[m, 0]))[0:7]
+                + ' DEC is ' + str(np.degrees(Catalog2_Data.iloc[m, 1]))[0:6] + "\n")
             # save only the matches for tolerance = Selected_Tol_toPlot
             if tol == Selected_Tol_toPlot:
                 # plot simple scatter
                 plt.figure(1)
-                plt.scatter(np.degrees(Catalog1_Data[x][0]), np.degrees(Catalog1_Data[x][1]), facecolors='none',
+                plt.scatter(np.degrees(Catalog1_Data.iloc[x, 0]), np.degrees(Catalog1_Data.iloc[x, 1]),
+                            facecolors='none',
                             edgecolors='b')
-                plt.scatter(np.degrees(Catalog2_Data[m][0]), np.degrees(Catalog2_Data[m][1]), facecolors='g',
+                plt.scatter(np.degrees(Catalog2_Data.iloc[m, 0]), np.degrees(Catalog2_Data.iloc[m, 1]), facecolors='g',
                             edgecolors='none')
 
                 # plot 3D scatter
                 plt.figure(2)
-                plt.scatter(Catalog2_Data[m][0] - math.pi, Catalog2_Data[m][1], facecolors='g', edgecolors='none', s=20)
+                plt.scatter(Catalog2_Data.iloc[m, 0] - math.pi, Catalog2_Data.iloc[m, 1], facecolors='g',
+                            edgecolors='none', s=20)
 
-                distance_temp = sphere_distance_fast(Catalog1_Data[x][0], Catalog1_Data[x][1], Catalog2_Data[m][0],
-                                                     Catalog2_Data[m][1])
+                distance_temp = sphere_distance_fast(Catalog1_Data.iloc[x, 0], Catalog1_Data.iloc[x, 1],
+                                                     Catalog2_Data.iloc[m, 0],
+                                                     Catalog2_Data.iloc[m, 1])
                 # save the ,matches in the data_for_legacysurvey to use later as csv
                 data_for_legacysurvey.append(
-                    [str(np.degrees(Catalog1_Data[x][0]))[0:10], str(np.degrees(Catalog1_Data[x][1]))[0:10],
+                    [str(np.degrees(Catalog1_Data.iloc[x, 0]))[0:10], str(np.degrees(Catalog1_Data.iloc[x, 1]))[0:10],
                      Catalog1_Name + '@' + str(x + 2), 'blue',
-                     '10', Catalog1_Info['Name'][x], '', '', '', '', '', '', ''])
+                     '10', Catalog1_Data['Name'][x], '', '', '', '', '', '', ''])
                 data_for_legacysurvey.append(
-                    [str(np.degrees(Catalog2_Data[m][0]))[0:10], str(np.degrees(Catalog2_Data[m][1]))[0:10],
+                    [str(np.degrees(Catalog2_Data.iloc[m, 0]))[0:10], str(np.degrees(Catalog2_Data.iloc[m, 1]))[0:10],
                      Catalog2_Name + '@' + str(m + 2), 'green',
-                     '10', Catalog2_Info['ObsID'][m], Catalog2_Info['t_i'][m], Catalog2_Info['t_f'][m],
-                     Catalog2_Info['S/N'][m], Catalog2_Info['mean_d_optical_arcmin'][m], str(distance_temp),
-                     Catalog2_Info['Chandra_counterpart'][m], Catalog2_Info['photons_in_ap_info'][m]])
+                     '10', Catalog2_Data['ObsID'][m], Catalog2_Data['t_i'][m], Catalog2_Data['t_f'][m],
+                     Catalog2_Data['S/N'][m], Catalog2_Data['mean_d_optical_arcmin'][m], str(distance_temp),
+                     Catalog2_Data['Chandra_counterpart'][m], Catalog2_Data['photons_in_ap_info'][m]])
 
     result_vec.append(count_match)
     Matches_Text_Tol.close()
@@ -163,13 +184,9 @@ plt.ylabel('mean_d_optical_arcmin')
 plt.title('^ IN, o OUT')
 plt.savefig(os.path.join(Results_Folder, '2.png'), dpi=300)
 
-
-#Trex_light_I = Trex_Matches['photons_in_ap_info']
-#Trex_light_I = Trex_light_I.loc[[6]].to_numpy()
-#print(Trex_light_I)
-
-
-#df_LP=Trex_Matches.loc[[6]] # This can be done on any line in the file, this is just an example
-#print(df_LP)
-#arrival_times=df_LP['photons_in_ap_info'].to_numpy()[0][:,0]
-#print(arrival_times)
+with open(os.path.join(Results_Folder,
+                       'ONLY TREX ' + Catalog1_Name + '_&&_' + Catalog2_Name + '_' + 'UPLOAD_to_legacy_survey.csv'),
+          'w', encoding='UTF8', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow(header)
+    writer.writerows(data_for_legacysurvey[1::2])
