@@ -33,8 +33,8 @@ Catalog2_Data = pd.read_csv(os.path.join(os.getcwd(), Catalog2)).loc[:, Catalog2
 # change degrees to rad
 Catalog1_Data['RA'] = np.radians(Catalog1_Data['RA'].to_numpy())
 Catalog1_Data['DE'] = np.radians(Catalog1_Data['DE'].to_numpy())
-Catalog2_Data['ra'] = np.radians(Catalog2_Data['ra'].to_numpy())
-Catalog2_Data['dec'] = np.radians(Catalog2_Data['dec'].to_numpy())
+Catalog2_Data['ra'] = Catalog2_Data['ra'] * math.pi / 180
+Catalog2_Data['dec'] = Catalog2_Data['dec'] * math.pi / 180
 
 pixel_size = 0.492
 
@@ -43,10 +43,10 @@ dfx = Catalog2_Data[cond_noHETGLETG]
 cond_nosubarrays = dfx['nrows'] > 1000
 cond_non_buffer = dfx['buffer_pixels'] == 0
 cond_no_border = (dfx['chipx_avg'] > 16 / pixel_size) & (dfx['chipx_avg'] < 1024 - 16 / pixel_size) & (
-            dfx['chipy_avg'] > 16 / pixel_size) & (dfx['chipy_avg'] < 1024 - 16 / pixel_size)
+        dfx['chipy_avg'] > 16 / pixel_size) & (dfx['chipy_avg'] < 1024 - 16 / pixel_size)
+cond_have_photons = dfx['photons_in_ap_info'] != '[]'
 Trex_cat = dfx[cond_nosubarrays & cond_no_border & cond_non_buffer]
 Catalog2_Data = Trex_cat.reset_index(drop=True)
-print(Catalog2_Data)
 
 # Define the angular tolerance
 tolerance = 10 * (2 * math.pi / 1296000)
@@ -58,9 +58,7 @@ Selected_Tol_toPlot = tolerance[-1]
 # Create Folders
 Results_Folder = os.path.join(os.getcwd(), Catalog1_Name + ' && ' + Catalog2_Name + ' @ ' + str(
     datetime.now().strftime('%Y-%m-%d_%H-%M-%S')))
-Folder_for_txt = os.path.join(Results_Folder, 'txt')
 os.mkdir(Results_Folder)
-os.mkdir(Folder_for_txt)
 
 result_vec = []
 plt.figure(2)
@@ -73,27 +71,15 @@ plt.grid()
 data_for_legacysurvey = []
 
 for tol in tqdm(tolerance):
-    Matches_Text_Tol = open(os.path.join(Folder_for_txt, "Matches list for tol =  " + str(tol)[0:6] + '.txt'),
-                            "w")
     count_match = 0
     for x in range((len(Catalog1_Data))):
         distance_vec = sphere_distance_fast(Catalog1_Data.iloc[x, 0], Catalog1_Data.iloc[x, 1],
                                             Catalog2_Data.iloc[:, 0],
                                             Catalog2_Data.iloc[:, 1])
         Where_Vec = np.asarray(np.where(distance_vec < tol))[0]
-
         # add the number of matches with this tol
         count_match = count_match + len(Where_Vec)
-
         for m in Where_Vec:
-            # save all the matches for each tolerance, in txt file
-            Matches_Text_Tol.write(
-                "\n" + 'match between ' + Catalog1_Name + '@' + str(x + 2) + ' RA is ' + str(
-                    np.degrees(Catalog1_Data.iloc[x, 0]))[0:7] + ' DEC is ' + str(
-                    np.degrees(Catalog1_Data.iloc[x, 1]))[0:6] + ' and ' + Catalog2_Name + '@' + str(
-                    m + 2) + ' RA is ' + str(
-                    np.degrees(Catalog2_Data.iloc[m, 0]))[0:7]
-                + ' DEC is ' + str(np.degrees(Catalog2_Data.iloc[m, 1]))[0:6] + "\n")
             # save only the matches for tolerance = Selected_Tol_toPlot
             if tol == Selected_Tol_toPlot:
                 # plot simple scatter
@@ -113,6 +99,7 @@ for tol in tqdm(tolerance):
                                                      Catalog2_Data.iloc[m, 0],
                                                      Catalog2_Data.iloc[m, 1])
                 # save the ,matches in the data_for_legacysurvey to use later as csv
+                pd.option_context('display.max_seq_items', 1000000000)
                 data_for_legacysurvey.append(
                     [str(np.degrees(Catalog1_Data.iloc[x, 0]))[0:10], str(np.degrees(Catalog1_Data.iloc[x, 1]))[0:10],
                      Catalog1_Name + '@' + str(x + 2), 'blue',
@@ -125,7 +112,6 @@ for tol in tqdm(tolerance):
                      Catalog2_Data['Chandra_counterpart'][m], Catalog2_Data['photons_in_ap_info'][m]])
 
     result_vec.append(count_match)
-    Matches_Text_Tol.close()
 
 # save the 2d scatter
 plt.figure(1)
@@ -190,3 +176,31 @@ with open(os.path.join(Results_Folder,
     writer = csv.writer(f)
     writer.writerow(header)
     writer.writerows(data_for_legacysurvey[1::2])
+
+for i in range(len(Trex_Matches)):
+    df_LP = Trex_Matches.iloc[i, -1]
+    df_LP = str(df_LP).replace('...', '').replace(' ', ', ').replace('\n, \n', '')
+    b = pd.DataFrame(eval(df_LP), columns=['time', 'x', 'y', 'energy'])
+
+    plt.figure(6)
+    n, bins, patches = plt.hist(b['time'], bins=50)
+    bins_centers = 0.5 * (bins[:-1] + bins[1:])
+    plt.xlabel('photons arrival times [s]')
+    plt.ylabel('Number of photons')
+    plt.title('a')
+    plt.grid()
+    plt.savefig(os.path.join(Results_Folder, 'a' + str(i) + '.png'), facecolor='w', edgecolor='w',
+                orientation='portrait', format='png',
+                transparent=False, bbox_inches=None, pad_inches=0.1)
+    plt.close()
+
+    plt.figure(7)
+    plt.plot(bins_centers, n, 'ro-')
+    plt.xlabel('photons arrival times [s]')
+    plt.ylabel('Number of photons')
+    plt.title('b')
+    plt.grid()
+    plt.savefig(os.path.join(Results_Folder, 'b' + str(i) + '.png'), facecolor='w', edgecolor='w',
+                orientation='portrait', format='png',
+                transparent=False, bbox_inches=None, pad_inches=0.1)
+    plt.close()
